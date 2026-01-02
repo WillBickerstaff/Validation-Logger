@@ -28,7 +28,7 @@ TARGET  := logger
 
 # Source files for this stage.
 # Kept deliberately minimal for initial bring-up.
-SRC     := main.c
+SRC     := main.c timer1_capture.c
 OBJ     := $(SRC:.c=.o)
 
 # ---------------------------------------------------------------------------
@@ -39,8 +39,12 @@ OBJ     := $(SRC:.c=.o)
 # -Os        : optimise for size (predictable, commonly used on AVR)
 # -std=c11   : explicit C standard
 # -Wall/...  : treat warnings seriously during validation work
+#              Enable (1) or disable (0) Timer1 input capture noise canceller
+#              (ICNC1). This affects edge filtering and timing fidelity and
+#              is intentionally controlled at build time for reproducibility.
 CFLAGS  := -mmcu=$(MCU) -DF_CPU=$(F_CPU) -Os -std=c11 \
-           -Wall -Wextra -Werror
+           -Wall -Wextra -Werror \
+           -DTIMER1_CAPTURE_USE_NOISE_CANCEL=1
 
 # Linker must also know the MCU type to select the correct memory layout.
 LDFLAGS := -mmcu=$(MCU)
