@@ -14,11 +14,14 @@ typedef enum {
     CAPTURE_EDGE_FALLING = 0u,
 } capture_edge_t;
 
-// Timer1 runs at F_CPU with no prescaler (tick period = 1/F_CPU seconds).
-// 16-bit counter wraps every 65536 ticks.
-// Example at 8 MHz: 1 tick = 125 ns; wrap period ≈ 8.192 ms.
+// Timer1 runs at F_CPU with no prescaler (tick period = 1 / F_CPU seconds).
+// The hardware Timer1 counter is 16-bit and wraps every 65536 ticks
+// (≈ 8.192 ms at 8 MHz).
+//
+// Capture timestamps are extended in software using a Timer1 overflow
+// counter, providing a monotonically increasing 32-bit tick value.
 typedef struct {
-    uint16_t ticks;          // Absolute Timer1 count captured in ICR1.
+    uint32_t ticks;          // Absolute Timer1 count captured in ICR1.
     capture_edge_t edge;     // Edge polarity observed.
 } capture_event_t;
 

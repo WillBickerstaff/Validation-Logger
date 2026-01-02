@@ -17,6 +17,7 @@ static capture_event_t capture_buffer[CAPTURE_BUFFER_SIZE];
 static volatile uint8_t buffer_head = 0;
 static volatile uint8_t buffer_tail = 0;
 static volatile uint16_t dropped_events = 0;
+static volatile uint16_t timer1_overflow_hi = 0;
 
 // Enforce Ring buffer power of two
 _Static_assert((CAPTURE_BUFFER_SIZE & (CAPTURE_BUFFER_SIZE - 1)) == 0,
@@ -31,6 +32,7 @@ void timer1_capture_init(void) {
         buffer_head = 0;
         buffer_tail = 0;
         dropped_events = 0;
+        timer1_overflow_hi = 0;
     }
 
     /* Stop Timer1 during configuration */
@@ -44,14 +46,14 @@ void timer1_capture_init(void) {
     /* Optional input capture noise filtering */
     uint8_t tccr1b = _BV(ICES1) | _BV(CS10);
 #if TIMER1_CAPTURE_USE_NOISE_CANCEL
-tccr1b |= _BV(ICNC1);
+    tccr1b |= _BV(ICNC1);
 #endif
 
     /* Rising edge + no prescaler (+ optional noise cancel) */
     TCCR1B = tccr1b;
 
     /* Enable input capture interrupt */
-    TIMSK1 |= _BV(ICIE1);
+    TIMSK1 |= _BV(ICIE1) | _BV(TOIE1);
 }
 
 /*
@@ -122,6 +124,10 @@ uint16_t timer1_capture_dropped(void) {
     return val;
 }
 
+ISR(TIMER1_OVF_vect) {
+    timer1_overflow_hi++;
+}
+
 /*
  * Timer1 Input Capture Interrupt Service Routine.
  *
@@ -153,7 +159,20 @@ ISR(TIMER1_CAPT_vect) {
      * edge. Reading ICR1 here retrieves that latched value; it is not affected
      * by subsequent timer progression.
      */
-    const uint16_t ticks = ICR1;
+    uint16_t ovf_hi = timer1_overflow_hi;
+    const uint16_t icr_ticks = ICR1;
+    const uint8_t tifr = TIFR1;
+
+    /*
+    * Boundary guard:
+    * If overflow occurred (TOV1 set) but the overflow ISR hasn't yet incremented
+    * timer1_overflow_hi, then for captures just after overflow ICR1 will be low.
+    */
+    if ((tifr & _BV(TOV1)) && (icr_ticks < 0x8000u)) {
+        ovf_hi++;
+    }
+
+    const uint32_t ticks = ((uint32_t)ovf_hi << 16) | icr_ticks;
 
     /*
      * Attempt to enqueue the event into the ring buffer.
@@ -190,7 +209,7 @@ ISR(TIMER1_CAPT_vect) {
      * The order here ensures that the current event is fully acknowledged
      * before re-arming the capture logic.
      */
-    TIFR1 = _BV(ICF1) | _BV(TOV1);
+    TIFR1 = _BV(ICF1);
     TCCR1B ^= _BV(ICES1);
 }
 
