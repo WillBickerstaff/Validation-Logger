@@ -65,7 +65,29 @@ int main(void)
      */
     uart_init();
 
-    uart_puts("\r\nValidation Logger boot\r\n");
+    /*
+     * Emit self-describing log header.
+     * Printed once at startup before any timed or interrupt-driven activity.
+     */
+    uart_puts("# validation-logger\r\n");
+
+    uart_puts("# F_CPU=");
+    uart_put_uint32(F_CPU);
+    uart_puts("\r\n");
+
+    uart_puts("# TIMER1_PRESCALER=1\r\n");
+
+    #if TIMER1_CAPTURE_USE_NOISE_CANCEL
+        uart_puts("# ICNC1=ON\r\n");
+    #else
+        uart_puts("# ICNC1=OFF\r\n");
+    #endif
+
+    uart_puts("# CAPTURE_BUFFER_SIZE=");
+    uart_put_uint16(CAPTURE_BUFFER_SIZE);
+    uart_puts("\r\n");
+
+    uart_puts("# ---\r\n");
 
     /*
      * Heartbeat loop.
