@@ -124,6 +124,29 @@ uint16_t timer1_capture_dropped(void) {
     return val;
 }
 
+uint32_t timer1_capture_now(void) {
+    uint16_t ovf_hi;
+    uint16_t tcnt;
+    uint8_t tifr;
+
+    ATOMIC_BLOCK(ATOMIC_RESTORESTATE) {
+        ovf_hi = timer1_overflow_hi;
+        tcnt = TCNT1;
+        tifr = TIFR1;
+    }
+
+    /*
+     * Boundary guard consistent with capture ISR:
+     * if overflow flag is set but overflow ISR has not yet run, then
+     * timestamps immediately after wrap need ovf_hi + 1.
+     */
+    if ((tifr & _BV(TOV1)) && (tcnt < 0x8000u)) {
+        ovf_hi++;
+    }
+
+    return ((uint32_t)ovf_hi << 16) | (uint32_t)tcnt;
+}
+
 ISR(TIMER1_OVF_vect) {
     timer1_overflow_hi++;
 }

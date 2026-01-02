@@ -43,6 +43,9 @@ bool timer1_capture_pop(capture_event_t *out_event);
 // Returned value is a coherent snapshot (read atomically).
 uint16_t timer1_capture_dropped(void);
 
+// Coherent snapshot of the current extended 32-bit Timer1 tick count.
+uint32_t timer1_capture_now(void);
+
 #ifdef __cplusplus
 }
 #endif
