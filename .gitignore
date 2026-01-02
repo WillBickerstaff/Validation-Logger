@@ -50,3 +50,7 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
+
+# KiCad backups and user state
+*-backups/
+*.kicad_prl
