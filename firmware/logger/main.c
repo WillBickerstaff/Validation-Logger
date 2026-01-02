@@ -88,6 +88,11 @@ static void uart_put_uint16(uint16_t value) {
     uart_put_uint32((uint32_t)value);
 }
 
+/* Logging active indicator LED on PD7 */
+#define LOG_LED_PORT  PORTD
+#define LOG_LED_DDR   DDRD
+#define LOG_LED_BIT   PD7
+
 /* SW2 is active-low on PB1 with internal pull-up enabled. */
 #define SW2_PORT   PORTB
 #define SW2_PINR   PINB
@@ -141,6 +146,10 @@ int main(void) {
     SW2_DDR &= (uint8_t)~_BV(SW2_BIT);
     SW2_PORT |= _BV(SW2_BIT);
 
+    /* Configure logging indicator LED (PD7) as output, initially OFF */
+    LOG_LED_DDR |= _BV(LOG_LED_BIT);
+    LOG_LED_PORT &= (uint8_t)~_BV(LOG_LED_BIT);
+
     /*
      * Start Timer1 capture after headers.
      * Capture runs continuously; SW2 only gates printing.
@@ -165,6 +174,7 @@ int main(void) {
             sw2_lockout_until = now + (uint32_t)SW2_DEBOUNCE_TICKS;
 
             if (logging) {
+                LOG_LED_PORT |= _BV(LOG_LED_BIT);   /* LED ON */
                 uart_puts("# START\r\n");
                 uart_puts("ticks,edge,dt_ticks,dropped\r\n");
                 last_tick = 0;
@@ -177,6 +187,7 @@ int main(void) {
                     }
                 }
             } else {
+                LOG_LED_PORT &= (uint8_t)~_BV(LOG_LED_BIT);  /* LED OFF */
                 uart_puts("# STOP\r\n");
             }
         }
