@@ -3,14 +3,10 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "timer1_capture.h"
+#define BAUD 38400
+#include <util/setbaud.h>
 
-/*
- * UART configuration.
- * This logger only transmits; RX is intentionally unused.
- */
-#define BAUD 115200
-#define UBRR_VALUE ((F_CPU / (16UL * BAUD)) - 1)
+#include "timer1_capture.h"
 
 /*
  * Initialise UART0 for simple debug output.
@@ -19,9 +15,15 @@
  * UART is an internal diagnostic mechanism, not a module interface.
  */
 static void uart_init(void) {
-    /* Set baud rate */
-    UBRR0H = (uint8_t)(UBRR_VALUE >> 8);
-    UBRR0L = (uint8_t)(UBRR_VALUE & 0xFF);
+    /* Set baud rate (computed with rounding by avr-libc) */
+    UBRR0H = UBRRH_VALUE;
+    UBRR0L = UBRRL_VALUE;
+
+#if USE_2X
+    UCSR0A |= (1 << U2X0);
+#else
+    UCSR0A &= (uint8_t)~(1 << U2X0);
+#endif
 
     /* Enable transmitter only */
     UCSR0B = (1 << TXEN0);
@@ -30,7 +32,7 @@ static void uart_init(void) {
     UCSR0C = (1 << UCSZ01) | (1 << UCSZ00);
 }
 
-/*
+ /*
  * Transmit a single character over UART.
  *
  * Blocking by design: this is a bootstrap / diagnostic path only.
@@ -123,6 +125,9 @@ int main(void) {
 
     uart_puts("# F_CPU=");
     uart_put_uint32(F_CPU);
+    uart_puts("\r\n");
+    uart_puts("# BAUD=");
+    uart_put_uint32(BAUD);
     uart_puts("\r\n");
 
     uart_puts("# TIMER1_PRESCALER=1\r\n");
